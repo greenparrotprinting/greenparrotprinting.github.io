@@ -36,8 +36,6 @@
        background:linear-gradient(var(--ang),#7AB000,#A1D004 35%,#F4FFB8 50%,#A1D004 65%,#7AB000);background-size:250% 250%;background-position:var(--gx) var(--gy);
        -webkit-background-clip:text;background-clip:text;color:transparent;filter:drop-shadow(0 2px 3px rgba(0,0,0,.8))}
   .who{font-weight:600;font-size:min(4.2vw,2.3vh,18px);text-shadow:0 1px 5px #000;margin-top:-1.8vh}
-  .enable{position:fixed;left:50%;bottom:calc(env(safe-area-inset-bottom) + 18px);transform:translateX(-50%);border:1px solid rgba(255,255,255,.5);
-          background:rgba(12,12,23,.7);color:#fff;font:600 13px Poppins,sans-serif;letter-spacing:.5px;padding:10px 18px;border-radius:999px;display:none}
 </style>
 </head>
 <body>
@@ -50,51 +48,36 @@
   <div class="cta">SCAN FOR MY CARD</div>
   <div class="who">Griffin Miller · Green Parrot Printing</div>
 </main>
-<button class="enable" id="enable">Tap to turn on the shine ✨</button>
 
 <script>
 (function(){
   const root=document.documentElement.style;
-  // target and current values, eased each frame so the shine glides instead of jittering
-  let tx=0, ty=0, cx=0, cy=0, gotSensor=false, t0=performance.now();
   const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
+  let tx=0, ty=0, cx=0, cy=0, lastInput=-1e9, t0=performance.now();
 
+  // tilt: follows the phone when the sensor is available
   function onTilt(e){
     if(e.gamma==null||e.beta==null) return;
-    gotSensor=true;
-    // gamma: left/right tilt (-90..90); beta: front/back tilt (~45 when held upright)
-    tx=clamp(e.gamma/35,-1,1);
-    ty=clamp((e.beta-45)/35,-1,1);
+    tx=clamp(e.gamma/35,-1,1); ty=clamp((e.beta-45)/35,-1,1); lastInput=performance.now();
   }
-  function onPointer(e){
-    if(gotSensor) return;
-    tx=(e.clientX/innerWidth)*2-1; ty=(e.clientY/innerHeight)*2-1;
-  }
+  // mouse/finger drag also moves the shine
+  addEventListener('pointermove',e=>{ tx=(e.clientX/innerWidth)*2-1; ty=(e.clientY/innerHeight)*2-1; lastInput=performance.now(); });
+
   function frame(now){
-    if(!gotSensor && !pointerSeen){
-      // no sensor yet: slow automatic sweep so it still looks alive
-      const t=(now-t0)/1000; tx=Math.sin(t*0.9)*0.8; ty=Math.cos(t*0.6)*0.5;
-    }
-    cx+=(tx-cx)*0.12; cy+=(ty-cy)*0.12;
-    root.setProperty('--gx', (50+cx*50).toFixed(2)+'%');
-    root.setProperty('--gy', (50+cy*50).toFixed(2)+'%');
-    root.setProperty('--ang', (135+cx*40-cy*20).toFixed(1)+'deg');
+    // always on: if nothing has moved it for 1.5s, the shine sweeps by itself
+    if(now-lastInput>1500){ const t=(now-t0)/1000; tx=Math.sin(t*1.1)*0.9; ty=Math.cos(t*0.7)*0.55; }
+    cx+=(tx-cx)*0.1; cy+=(ty-cy)*0.1;
+    root.setProperty('--gx',(50+cx*50).toFixed(2)+'%');
+    root.setProperty('--gy',(50+cy*50).toFixed(2)+'%');
+    root.setProperty('--ang',(135+cx*40-cy*20).toFixed(1)+'deg');
     requestAnimationFrame(frame);
   }
-  let pointerSeen=false;
-  addEventListener('pointermove',e=>{pointerSeen=true;onPointer(e)});
-
-  const btn=document.getElementById('enable');
-  function listen(){ addEventListener('deviceorientation',onTilt,true); }
+  const listen=()=>addEventListener('deviceorientation',onTilt,true);
   if(typeof DeviceOrientationEvent!=='undefined' && typeof DeviceOrientationEvent.requestPermission==='function'){
-    // iPhone: motion access has to be granted from a tap
-    btn.style.display='block';
-    const ask=()=>DeviceOrientationEvent.requestPermission().then(r=>{ if(r==='granted'){listen();btn.style.display='none';} }).catch(()=>{});
-    btn.addEventListener('click',ask);
-    document.querySelector('.ring').addEventListener('click',ask);
-  } else {
-    listen();
-  }
+    // iPhone: a tap anywhere quietly switches the shine to follow the tilt (no button)
+    const ask=()=>DeviceOrientationEvent.requestPermission().then(r=>{ if(r==='granted') listen(); }).catch(()=>{});
+    addEventListener('click',ask,{once:true}); addEventListener('touchend',ask,{once:true});
+  } else { listen(); }
   requestAnimationFrame(frame);
 })();
 </script>
