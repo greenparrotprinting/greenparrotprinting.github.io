@@ -1,0 +1,102 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Scan for my card · Green Parrot Printing</title>
+<meta name="theme-color" content="#0C0C17">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="My QR">
+<link rel="apple-touch-icon" href="card-qr-icon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@700;900&family=Poppins:wght@500;600&display=swap" rel="stylesheet">
+<style>
+  :root{--navy:#0C0C17;--gx:30%;--gy:30%;--ang:135deg}
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{height:100%;background:var(--navy);overflow:hidden;-webkit-user-select:none;user-select:none;-webkit-tap-highlight-color:transparent}
+  .bg{position:fixed;inset:0;background:var(--navy) url(../synthwave-bg.png) center 58%/cover no-repeat}
+  .bg::after{content:"";position:absolute;inset:0;background:linear-gradient(180deg,rgba(12,12,23,.45) 0%,rgba(12,12,23,.1) 45%,rgba(12,12,23,.55) 100%)}
+  main{position:relative;height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3.2vh;
+       padding:calc(env(safe-area-inset-top) + 12px) 20px calc(env(safe-area-inset-bottom) + 12px);color:#fff;font-family:Poppins,system-ui,sans-serif}
+  .logo{width:min(34vw,34vh,190px);height:auto;filter:drop-shadow(0 4px 12px rgba(0,0,0,.6))}
+
+  /* the tile: a wide, multi-stop gradient whose angle and position follow the phone's tilt */
+  .ring{--s:min(78vw,52vh,420px);width:calc(var(--s) + 20px);height:calc(var(--s) + 20px);border-radius:30px;padding:6px;
+        background:linear-gradient(var(--ang),#6FA800,#A1D004 35%,#F4FFB8 50%,#A1D004 65%,#6FA800);background-size:250% 250%;background-position:var(--gx) var(--gy);
+        box-shadow:0 0 34px rgba(190,235,60,.55)}
+  .gap{width:100%;height:100%;border-radius:25px;background:var(--navy);padding:4px}
+  .tile{position:relative;width:100%;height:100%;border-radius:21px;overflow:hidden;
+        background:linear-gradient(var(--ang),#6FA800 0%,#8CC000 22%,#A1D004 38%,#E9FF8A 48%,#FAFFD6 51%,#E4FF78 55%,#A1D004 68%,#7AB000 100%);
+        background-size:260% 260%;background-position:var(--gx) var(--gy)}
+  .tile img{position:absolute;inset:7%;width:86%;height:86%;image-rendering:pixelated;image-rendering:crisp-edges}
+
+  .cta{font-family:Orbitron,sans-serif;font-weight:900;font-size:min(7.4vw,4.2vh,34px);letter-spacing:1px;text-align:center;
+       background:linear-gradient(var(--ang),#7AB000,#A1D004 35%,#F4FFB8 50%,#A1D004 65%,#7AB000);background-size:250% 250%;background-position:var(--gx) var(--gy);
+       -webkit-background-clip:text;background-clip:text;color:transparent;filter:drop-shadow(0 2px 3px rgba(0,0,0,.8))}
+  .who{font-weight:600;font-size:min(4.2vw,2.3vh,18px);text-shadow:0 1px 5px #000;margin-top:-1.8vh}
+  .enable{position:fixed;left:50%;bottom:calc(env(safe-area-inset-bottom) + 18px);transform:translateX(-50%);border:1px solid rgba(255,255,255,.5);
+          background:rgba(12,12,23,.7);color:#fff;font:600 13px Poppins,sans-serif;letter-spacing:.5px;padding:10px 18px;border-radius:999px;display:none}
+</style>
+</head>
+<body>
+<div class="bg"></div>
+<main>
+  <img class="logo" src="logo.png" alt="Green Parrot Printing">
+  <div class="ring"><div class="gap"><div class="tile">
+    <img src="card-qr-modules.png" alt="QR code: greenparrotprinting.github.io/card">
+  </div></div></div>
+  <div class="cta">SCAN FOR MY CARD</div>
+  <div class="who">Griffin Miller · Green Parrot Printing</div>
+</main>
+<button class="enable" id="enable">Tap to turn on the shine ✨</button>
+
+<script>
+(function(){
+  const root=document.documentElement.style;
+  // target and current values, eased each frame so the shine glides instead of jittering
+  let tx=0, ty=0, cx=0, cy=0, gotSensor=false, t0=performance.now();
+  const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
+
+  function onTilt(e){
+    if(e.gamma==null||e.beta==null) return;
+    gotSensor=true;
+    // gamma: left/right tilt (-90..90); beta: front/back tilt (~45 when held upright)
+    tx=clamp(e.gamma/35,-1,1);
+    ty=clamp((e.beta-45)/35,-1,1);
+  }
+  function onPointer(e){
+    if(gotSensor) return;
+    tx=(e.clientX/innerWidth)*2-1; ty=(e.clientY/innerHeight)*2-1;
+  }
+  function frame(now){
+    if(!gotSensor && !pointerSeen){
+      // no sensor yet: slow automatic sweep so it still looks alive
+      const t=(now-t0)/1000; tx=Math.sin(t*0.9)*0.8; ty=Math.cos(t*0.6)*0.5;
+    }
+    cx+=(tx-cx)*0.12; cy+=(ty-cy)*0.12;
+    root.setProperty('--gx', (50+cx*50).toFixed(2)+'%');
+    root.setProperty('--gy', (50+cy*50).toFixed(2)+'%');
+    root.setProperty('--ang', (135+cx*40-cy*20).toFixed(1)+'deg');
+    requestAnimationFrame(frame);
+  }
+  let pointerSeen=false;
+  addEventListener('pointermove',e=>{pointerSeen=true;onPointer(e)});
+
+  const btn=document.getElementById('enable');
+  function listen(){ addEventListener('deviceorientation',onTilt,true); }
+  if(typeof DeviceOrientationEvent!=='undefined' && typeof DeviceOrientationEvent.requestPermission==='function'){
+    // iPhone: motion access has to be granted from a tap
+    btn.style.display='block';
+    const ask=()=>DeviceOrientationEvent.requestPermission().then(r=>{ if(r==='granted'){listen();btn.style.display='none';} }).catch(()=>{});
+    btn.addEventListener('click',ask);
+    document.querySelector('.ring').addEventListener('click',ask);
+  } else {
+    listen();
+  }
+  requestAnimationFrame(frame);
+})();
+</script>
+</body>
+</html>
