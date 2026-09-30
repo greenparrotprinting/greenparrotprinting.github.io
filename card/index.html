@@ -32,6 +32,16 @@
   .call{background:var(--magenta)}.mail{background:var(--blue)}
   .web{grid-column:1/3;background:var(--yellow);color:var(--navy)}
   .pdf{grid-column:1/3;background:rgba(12,12,23,.6);border:1px solid rgba(255,255,255,.45);font-size:11px}
+  .front{position:relative;margin-bottom:16px}
+  .front .card{margin-bottom:0}
+  .egg-hit{position:absolute;left:61.6%;top:8%;width:6.6%;height:15.5%;cursor:pointer;-webkit-tap-highlight-color:transparent;z-index:3}
+  .egg{position:absolute;left:2.86%;top:10.99%;width:37.71%;height:65.25%;pointer-events:none;opacity:0;z-index:2}
+  .egg.on{opacity:1}
+  .egg canvas{width:100%;height:100%;display:block;border-radius:6px}
+  .egg .err{position:absolute;left:0;right:0;bottom:4%;text-align:center;font:700 9px/1 Orbitron,monospace;letter-spacing:1.5px;color:#FB1A7F;
+            text-shadow:1px 0 #00E5FF,-1px 0 #FB1A7F;opacity:0}
+  .egg.glitching .err{opacity:1;animation:blink .12s steps(2) infinite}
+  @keyframes blink{50%{opacity:.2}}
   footer{margin-top:28px;font-size:11px;letter-spacing:2px;color:rgba(255,255,255,.8);text-shadow:0 1px 4px #000;text-align:center}
 </style>
 </head>
@@ -40,7 +50,11 @@
 <main>
   <div class="kicker">GREEN PARROT PRINTING</div>
 
+  <div class="front">
   <img class="card" src="card-front.jpg" alt="Green Parrot Printing business card, front: Griffin Miller, President, 727-433-3449, griffin@greenparrotprinting.com, greenparrotprinting.com">
+    <div class="egg" id="egg"><canvas id="eggc" width="507" height="502"></canvas><div class="err">⚠ SIGNAL LOST</div></div>
+    <a class="egg-hit" id="eggHit" aria-label=""></a>
+  </div>
 
   <img class="card" src="card-back.jpg" alt="Green Parrot Printing business card, back: scan to save my contact">
 
@@ -56,5 +70,58 @@
 
   <footer>EST. ST. PETE, FL</footer>
 </main>
+<script>
+(function(){
+  const egg=document.getElementById('egg'), cv=document.getElementById('eggc'), ctx=cv.getContext('2d');
+  const W=cv.width, H=cv.height;
+  const load=src=>new Promise(r=>{const i=new Image();i.onload=()=>r(i);i.src=src;});
+  let imgs=null, busy=false;
+  Promise.all([load('egg-logo.jpg'),load('egg-photo.jpg')]).then(a=>imgs=a);
+  const rnd=(a,b)=>a+Math.random()*(b-a);
+
+  function drawGlitch(src, other, amt){
+    ctx.globalCompositeOperation='source-over';
+    ctx.drawImage(Math.random()<amt*0.35?other:src,0,0,W,H);
+    // torn horizontal slices
+    const n=Math.floor(4+amt*14);
+    for(let i=0;i<n;i++){
+      const y=rnd(0,H), h=rnd(3,H*0.12*amt+4), dx=rnd(-W*0.18,W*0.18)*amt;
+      ctx.drawImage(Math.random()<0.25?other:src,0,y,W,h,dx,y,W,h);
+    }
+    // RGB split
+    ctx.globalCompositeOperation='screen';
+    ctx.globalAlpha=0.55*amt;
+    ctx.fillStyle='#ff0055'; ctx.fillRect(rnd(-6,6)*amt,rnd(0,H),W,rnd(2,18));
+    ctx.fillStyle='#00e5ff'; ctx.fillRect(rnd(-6,6)*amt,rnd(0,H),W,rnd(2,18));
+    ctx.globalAlpha=1; ctx.globalCompositeOperation='source-over';
+    // static noise + scanlines
+    for(let i=0;i<120*amt;i++){ctx.fillStyle=Math.random()<.5?'rgba(255,255,255,.7)':'rgba(0,0,0,.7)';ctx.fillRect(rnd(0,W),rnd(0,H),rnd(1,4),1);}
+    ctx.fillStyle='rgba(0,0,0,.18)'; for(let y=0;y<H;y+=3) ctx.fillRect(0,y,W,1);
+  }
+  function glitch(from,to,ms){
+    return new Promise(done=>{
+      egg.classList.add('glitching'); const t0=performance.now();
+      (function step(now){
+        const p=(now-t0)/ms; if(p>=1){ctx.drawImage(to,0,0,W,H); egg.classList.remove('glitching'); return done(); }
+        const amt=Math.sin(p*Math.PI); // ramps up then down
+        drawGlitch(p<0.5?from:to, p<0.5?to:from, 0.35+amt*0.65);
+        requestAnimationFrame(step);
+      })(t0);
+    });
+  }
+  async function run(e){
+    if(e) e.preventDefault();
+    if(busy||!imgs) return; busy=true;
+    const [logo,photo]=imgs;
+    ctx.drawImage(logo,0,0,W,H); egg.classList.add('on');
+    if(navigator.vibrate) navigator.vibrate([30,40,30]);
+    await glitch(logo,photo,700);
+    await new Promise(r=>setTimeout(r,4000));
+    await glitch(photo,logo,700);
+    egg.classList.remove('on'); busy=false;
+  }
+  document.getElementById('eggHit').addEventListener('click',run);
+})();
+</script>
 </body>
 </html>
